@@ -1,0 +1,184 @@
+/move_base/global_costmap:
+  global_costmap:
+    ros__parameters:
+      global_frame: map
+      robot_base_frame: base_footprint
+      update_frequency: 5.0
+      publish_frequency: 5.0
+      rolling_window: false
+      footprint: "[[-0.220, -0.220],[-0.220, 0.220],[0.340, 0.220],[0.340, -0.220]]"
+      transform_tolerance: 0.1
+      initial_transform_timeout: 60.0
+      track_unknown_space: false
+      always_send_full_costmap: false
+      plugins: ["static_layer", "slow_area_layer", "mop_lift_area_layer", "safe_area_layer", "voxel_layer", "collision_layer", "virtual_wall_layer", "inflation_layer"]
+
+      static_layer:
+        plugin: "nav2_costmap_2d::XlStaticLayer"
+        map_topic: /map_origin
+        lethal_cost_threshold: 100
+
+      slow_area_layer:
+        plugin: "nav2_costmap_2d::VirtualWallLayer"
+        publish_layer_costmap: true
+        default_virutal_wall_value: 0 #0-255
+        update_method: 2 #0:update_with_max  1:update_with_min
+        virtual_wall_sources: slow_area
+        slow_area:
+          topic: /slow_area_update
+          polygon_type: 1 #1:SOLID_POLYGON_TYPE
+
+      mop_lift_area_layer:
+        plugin: "nav2_costmap_2d::VirtualWallLayer"
+        publish_layer_costmap: true
+        default_virutal_wall_value: 0 #0-255
+        update_method: 2 #0:update_with_max  1:update_with_min
+        virtual_wall_sources: mop_lift_area
+        mop_lift_area:
+          topic: /mop_lift_area_update
+          polygon_type: 1 #1:SOLID_POLYGON_TYPE
+
+      safe_area_layer:
+        plugin: "nav2_costmap_2d::VirtualWallLayer"
+        publish_layer_costmap: true
+        default_virutal_wall_value: 0 #0-255
+        update_method: 1 #0:update_with_max  1:update_with_min
+        virtual_wall_sources: safe_area
+        safe_area:
+          topic: /safe_area_update
+          polygon_type: 1 #1:SOLID_POLYGON_TYPE
+
+      voxel_layer:
+        plugin: "nav2_costmap_2d::XlVoxelLayer"
+        z_voxels: 16
+        origin_z: 0.03
+        z_resolution: 0.05
+        random_noise: 0.05
+        unknown_threshold: 15
+        mark_threshold: 0
+        robot_base_frame: base_link
+        observation_sources: scan top_camera_point_cloud2 as_right_pointcloud2 as_left_pointcloud2  
+
+        scan:
+          topic: /scan
+          sensor_frame: ""
+          data_type: LaserScan
+          update_rate: 8
+          max_obstacle_height: 0.65
+          obstacle_range: 1.5
+          raytrace_range: 1.55
+          marking: true
+          clearing: true
+          max_dist_min_obs_height: 0.08
+
+        top_camera_point_cloud2:
+          topic: /top_camera_point_cloud2
+          sensor_frame: ""
+          data_type: PointCloud2
+          update_rate: 8
+          max_obstacle_height: 0.65
+          obstacle_range: 1.5
+          raytrace_range: 1.55
+          marking: true
+          clearing: true
+          max_dist_min_obs_height: 0.1
+
+          cliff_detect_enable: true # 是否开启悬崖检测
+          cliff_cells_per_frame: 75 # 每一帧检测到的悬崖（格子/pixel）数
+          cliff_points_per_frame: 1000 # 每一帧检测到的悬崖点云数
+          cliff_max_range: 1.1 # 检测悬崖的距离 m
+          cliff_detect_depth_min: -0.1 # 检测悬崖的深度 m
+          cliff_detect_depth_max: -0.6 # 检测悬崖的深度 m
+          cliff_inflation_radius: 6 # 悬崖膨胀的半径 pixel
+          save_data: false
+
+        as_left_pointcloud2:
+          topic: /as_left_pointcloud2
+          sensor_frame: ""
+          data_type: PointCloud2
+          update_rate: 8
+          max_obstacle_height: 0.45
+          obstacle_range: 1.0
+          raytrace_range: 1.05
+          marking: true
+          clearing: true
+          max_dist_min_obs_height: 0.08
+
+          cliff_detect_enable: true # 是否开启悬崖检测
+          cliff_cells_per_frame: 100 # 每一帧检测到的悬崖（格子/pixel）数
+          cliff_points_per_frame: 1500 # 每一帧检测到的悬崖点云数
+          cliff_max_range: 1.0 # 检测悬崖的距离 m
+          cliff_detect_depth_min: -0.12 # 检测悬崖的深度 m
+          cliff_detect_depth_max: -0.6 # 检测悬崖的深度 m
+          cliff_inflation_radius: 6 # 悬崖膨胀的半径 pixel
+          save_data: false
+
+        as_right_pointcloud2:
+          topic: /as_right_pointcloud2
+          sensor_frame: ""
+          data_type: PointCloud2
+          update_rate: 8
+          max_obstacle_height: 0.45
+          obstacle_range: 1.0
+          raytrace_range: 1.05
+          marking: true
+          clearing: true
+          max_dist_min_obs_height: 0.08
+
+          cliff_detect_enable: true # 是否开启悬崖检测
+          cliff_cells_per_frame: 100 # 每一帧检测到的悬崖（格子/pixel）数
+          cliff_points_per_frame: 1500 # 每一帧检测到的悬崖点云数
+          cliff_max_range: 1.0 # 检测悬崖的距离 m
+          cliff_detect_depth_min: -0.12 # 检测悬崖的深度 m
+          cliff_detect_depth_max: -0.6 # 检测悬崖的深度 m
+          cliff_inflation_radius: 6 # 悬崖膨胀的半径 pixel
+          save_data: false
+
+      # 虚拟墙 polygon_type
+      # 0 - 空心多边形
+      # 1 - 实心多边形
+      # 2 - 多段线，1....n的n个点构成(1,2),(2,3)...(n-1,n)的n-1条线段
+      virtual_wall_layer:
+        plugin: "nav2_costmap_2d::VirtualWallLayer"
+        virtual_wall_sources: virtual_wall_update cleaning_virtual_wall cleaning_outlined_wall slected_area_outlined_wall base_station_protection_wall
+
+        virtual_wall_update:
+          topic: /virtual_wall_update
+          polygon_type: 2
+        cleaning_virtual_wall:
+          topic: /cleaning_virtual_wall
+          polygon_type: 0
+        cleaning_outlined_wall:
+          topic: /cleaning_outlined_wall
+          polygon_type: 0
+        slected_area_outlined_wall:
+          topic: /selected_area_outlined_wall
+          polygon_type: 0
+        base_station_protection_wall:
+          topic: /base_station_protection_wall
+          polygon_type: 1
+
+      collision_layer: #including collision sensor, simulated collision sensor, slippage detector and sonar sensor
+        plugin: "nav2_costmap_2d::CollisionLayer"
+        sensor_config: front_left front_right front_left_sim front_right_sim left_sim right_sim back_sim front_left_slippage_sim front_right_slippage_sim left_slippage_sim right_slippage_sim back_slippage_sim left_turning_slippage_sim right_turning_slippage_sim #ultrasonic0
+        front_left: {sensor_topic: "/collision_state_left", sensor_type: "collision", x_start: 0.35, x_end: 0.55,y_start: 0.0, y_end: 0.35, resolution: 0.025}
+        front_right: {sensor_topic: "/collision_state_right", sensor_type: "collision",x_start: 0.35, x_end: 0.55,y_start: -0.35, y_end: 0.0, resolution: 0.025}
+        front_left_sim: {sensor_topic: "/front_left_collision_sim", sensor_type: "collision", x_start: 0.35, x_end: 0.55,y_start: 0.0, y_end: 0.4, resolution: 0.025}
+        front_right_sim: {sensor_topic: "/front_right_collision_sim", sensor_type: "collision",x_start: 0.35, x_end: 0.55,y_start: -0.4, y_end: 0.0, resolution: 0.025}
+        left_sim: {sensor_topic: "/left_collision_sim", sensor_type: "collision",x_start: 0.10, x_end: 0.55,y_start: 0.3, y_end: 0.45, resolution: 0.025}
+        right_sim: {sensor_topic: "/right_collision_sim", sensor_type: "collision",x_start: 0.10, x_end: 0.55, y_start: -0.45, y_end: -0.3, resolution: 0.025}
+        back_sim: {sensor_topic: "/back_collision_sim", sensor_type: "collision", x_start: -0.45, x_end: -0.25,y_start: -0.3, y_end: 0.3, resolution: 0.025}
+        front_left_slippage_sim: {sensor_topic: "/front_left_slippage_sim", sensor_type: "collision", x_start: 0.35, x_end: 0.55,y_start: 0.0, y_end: 0.4, resolution: 0.025}
+        front_right_slippage_sim: {sensor_topic: "/front_right_slippage_sim", sensor_type: "collision",x_start: 0.35, x_end: 0.55,y_start: -0.4, y_end: 0.0, resolution: 0.025}
+        left_slippage_sim: {sensor_topic: "/left_slippage_sim", sensor_type: "collision",x_start: 0.10, x_end: 0.55,y_start: 0.3, y_end: 0.45, resolution: 0.025}
+        right_slippage_sim: {sensor_topic: "/right_slippage_sim", sensor_type: "collision",x_start: 0.10, x_end: 0.55, y_start: -0.45, y_end: -0.3, resolution: 0.025}
+        back_slippage_sim: {sensor_topic: "/back_slippage_sim", sensor_type: "collision", x_start: -0.45, x_end: -0.25,y_start: -0.3, y_end: 0.3, resolution: 0.025}
+        left_turning_slippage_sim: {sensor_topic: "/left_turning_slippage_sim", sensor_type: "collision",x_start: 0.10, x_end: 0.35,y_start: 0.3, y_end: 0.45, resolution: 0.025}
+        right_turning_slippage_sim: {sensor_topic: "/right_turning_slippage_sim", sensor_type: "collision",x_start: 0.10, x_end: 0.35, y_start: -0.45, y_end: -0.3, resolution: 0.025}
+        # ultrasonic0: {sensor_topic: "/ultrasonic0_sensor", sensor_type: "range",x_start: 0.10, x_end: 0.5,y_start: -0.2,y_end: 0.2, obstacle_threshold: 0.3, resolution: 0.025}
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::XlInflationLayer"
+        inflation_radius: 0.45 #0.50 # 外接圆半径
+        inscribed_radius: 0.25 # 内接圆半径
+        cost_scaling_factor: 10.0

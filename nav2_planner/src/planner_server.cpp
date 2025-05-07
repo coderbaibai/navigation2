@@ -670,7 +670,7 @@ void PlannerServer::isPathValid(
       if (current_distance < closest_distance) {
         closest_point_index = i;
         closest_distance = current_distance;
-      }
+      } 
     }
 
     /**

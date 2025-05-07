@@ -25,6 +25,9 @@
 #include "behaviortree_cpp/action_node.h"
 #include "nav2_behavior_tree/bt_utils.hpp"
 #include "std_msgs/msg/u_int64.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+#include <atomic>
 
 namespace nav2_behavior_tree
 {
@@ -57,12 +60,30 @@ public:
 private:
   void halt() override {}
   BT::NodeStatus tick() override;
+  void incomingMap(const nav_msgs::msg::OccupancyGrid::SharedPtr new_map);
+
+  bool isGoalInObstacle(const geometry_msgs::msg::PoseStamped & goal);
+  std::string int8ToFixedString(int8_t value) {
+      std::stringstream ss;
+      ss << std::setw(4) << std::right << static_cast<int>(value); // 必须转为int，否则会当作char处理
+      return ss.str();
+  }
+
 
   double viapoint_achieved_radius_;
   double transform_tolerance_;
   std::shared_ptr<tf2_ros::Buffer> tf_;
   std::string robot_base_frame_;
+  rclcpp::Node::SharedPtr node_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr publisher_;
+
+  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr costmap_sub_;
+
+  rclcpp::CallbackGroup::SharedPtr callback_group_;
+  rclcpp::executors::SingleThreadedExecutor callback_group_executor_;
+
+  nav_msgs::msg::OccupancyGrid::SharedPtr costmap_;
+  const uint32_t RADIUS = 2;
 };
 
 }  // namespace nav2_behavior_tree

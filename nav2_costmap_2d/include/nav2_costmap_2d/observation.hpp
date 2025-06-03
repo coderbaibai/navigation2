@@ -43,6 +43,7 @@ namespace nav2_costmap_2d
  * @note Tried to make members and constructor arguments const but the compiler would not accept the default
  * assignment operator for vector insertion!
  */
+
 class Observation
 {
 public:
@@ -75,6 +76,9 @@ public:
     obstacle_min_range_ = obs.obstacle_min_range_;
     raytrace_max_range_ = obs.raytrace_max_range_;
     raytrace_min_range_ = obs.raytrace_min_range_;
+    enable_constraints = obs.enable_constraints;
+    constraint_polygon_ = obs.constraint_polygon_;
+    transform_stamped_ = obs.transform_stamped_;
 
     return *this;
   }
@@ -107,7 +111,10 @@ public:
   : origin_(obs.origin_), cloud_(new sensor_msgs::msg::PointCloud2(*(obs.cloud_))),
     obstacle_max_range_(obs.obstacle_max_range_), obstacle_min_range_(obs.obstacle_min_range_),
     raytrace_max_range_(obs.raytrace_max_range_),
-    raytrace_min_range_(obs.raytrace_min_range_)
+    raytrace_min_range_(obs.raytrace_min_range_),
+    enable_constraints(obs.enable_constraints),
+    constraint_polygon_(obs.constraint_polygon_),
+    transform_stamped_(obs.transform_stamped_)
   {
   }
 
@@ -126,9 +133,82 @@ public:
   {
   }
 
+  // 计算向量 (p1 -> p2) 与 (p1 -> p) 的叉积
+  static inline double cross(const geometry_msgs::msg::Point32& p1,
+    const geometry_msgs::msg::Point32& p2,
+    const geometry_msgs::msg::Point32& p) 
+  {
+    double dy1 = p1.y - p.y;
+    double dz1 = p1.z - p.z;
+    double dy2 = p2.y - p.y;
+    double dz2 = p2.z - p.z;
+    return dy1 * dz2 - dy2 * dz1;
+  }
+
+  static inline bool isPointInConvexHull(const std::vector<geometry_msgs::msg::Point32> & hull, const geometry_msgs::msg::Point32& p) {
+    int n = hull.size();
+    if (n < 3) return false; // 凸包至少需要3个点
+
+    bool isFirst = true;
+    bool curDirection = true; // 用于判断点在凸包的哪一侧
+
+    for (int i = 0; i < n; ++i) {
+        int j = (i + 1) % n;
+        double crossProduct = cross(hull[i], hull[j], p);
+        if(isFirst){
+          curDirection = (crossProduct > 0); // 第一次判断方向
+          isFirst = false;
+          continue;
+        }
+        if(curDirection != (crossProduct > 0)){
+          return false; // 如果方向不一致，点在凸包外
+        }
+    }
+    return true; // 所有叉积 >= 0，点在凸包内
+  }
+
+  bool isPointInPolygon(double x,double y, double z, const std::string& global_frame) const{
+    if(!enable_constraints) {
+      return true;
+    }
+    if(constraint_polygon_.polygon.points.size() < 3) {
+      return true; // no constraints
+    }
+    geometry_msgs::msg::PointStamped in_point;
+    in_point.header.frame_id = global_frame;
+    in_point.point.x = x;
+    in_point.point.y = y;
+    in_point.point.z = z;
+    geometry_msgs::msg::PointStamped out_point;
+    out_point.header.stamp = transform_stamped_.header.stamp;
+    out_point.header.frame_id = transform_stamped_.header.frame_id;
+    tf2::doTransform(in_point, out_point, transform_stamped_);
+
+    Eigen::Vector3f p(out_point.point.x, out_point.point.y, out_point.point.z);
+
+    Eigen::Vector3f origin(0, 0, 0);
+    Eigen::Vector3f plane_normal(1.0, 0.0, 0.0);
+    // 计算从原点到当前点的方向向量
+    Eigen::Vector3f direction = p - origin;
+    // 计算直线参数t (直线方程: origin + t * direction)
+    float t = -(plane_normal.dot(origin) - constraint_polygon_.polygon.points[0].x) / plane_normal.dot(direction);
+    // 计算交点
+    Eigen::Vector3f intersection = origin + t * direction;
+
+    geometry_msgs::msg::Point32 point;
+    point.x = intersection.x();
+    point.y = intersection.y();
+    point.z = intersection.z();
+
+    return isPointInConvexHull(constraint_polygon_.polygon.points, point);
+  }
+
   geometry_msgs::msg::Point origin_;
   sensor_msgs::msg::PointCloud2 * cloud_;
   double obstacle_max_range_, obstacle_min_range_, raytrace_max_range_, raytrace_min_range_;
+  bool enable_constraints = false;
+  geometry_msgs::msg::PolygonStamped constraint_polygon_;
+  geometry_msgs::msg::TransformStamped transform_stamped_;
 };
 
 }  // namespace nav2_costmap_2d

@@ -156,6 +156,10 @@ void ObstacleLayer::onInitialize()
     declareParameter(source + "." + "raytrace_max_range", rclcpp::ParameterValue(3.0));
     declareParameter(source + "." + "raytrace_min_range", rclcpp::ParameterValue(0.0));
 
+    declareParameter(source + "." + "enable_constraints", rclcpp::ParameterValue(false));
+    declareParameter(source + "." + "constraint_x", rclcpp::ParameterValue(3.0));
+    declareParameter(source + "." + "constraint_polygon", rclcpp::ParameterValue(std::string("[]")));
+
     node->get_parameter(name_ + "." + source + "." + "topic", topic);
     node->get_parameter(name_ + "." + source + "." + "sensor_frame", sensor_frame);
     node->get_parameter(
@@ -189,6 +193,20 @@ void ObstacleLayer::onInitialize()
     node->get_parameter(name_ + "." + source + "." + "raytrace_min_range", raytrace_min_range);
     node->get_parameter(name_ + "." + source + "." + "raytrace_max_range", raytrace_max_range);
 
+    bool enable_constraints;
+    double constraint_x;
+    std::string constraint_polygon_string;
+
+    node->get_parameter(name_ + "." + source + "." + "enable_constraints", enable_constraints);
+    node->get_parameter(name_ + "." + source + "." + "constraint_x", constraint_x);
+    node->get_parameter(name_ + "." + source + "." + "constraint_polygon", constraint_polygon_string);
+
+    RCLCPP_ERROR(logger_,std::string(name_ + "." + source + "." + "enable_constraints").c_str());
+    RCLCPP_ERROR(logger_,"%d",enable_constraints);
+    RCLCPP_ERROR(logger_,std::string(name_ + "." + source + "." + "constraint_x").c_str());
+    RCLCPP_ERROR(logger_,"%lf",constraint_x);
+    RCLCPP_ERROR(logger_,std::string(name_ + "." + source + "." + "constraint_polygon").c_str());
+    RCLCPP_ERROR(logger_,constraint_polygon_string.c_str());
 
     RCLCPP_DEBUG(
       logger_,
@@ -197,16 +215,20 @@ void ObstacleLayer::onInitialize()
       sensor_frame.c_str());
 
     // create an observation buffer
-    observation_buffers_.push_back(
-      std::shared_ptr<ObservationBuffer
-      >(
-        new ObservationBuffer(
-          node, topic, observation_keep_time, expected_update_rate,
-          min_obstacle_height,
-          max_obstacle_height, obstacle_max_range, obstacle_min_range, raytrace_max_range,
-          raytrace_min_range, *tf_,
-          global_frame_,
-          sensor_frame, tf2::durationFromSec(transform_tolerance))));
+
+    auto tmp_buffer = std::shared_ptr<ObservationBuffer
+    >(
+      new ObservationBuffer(
+        node, topic, observation_keep_time, expected_update_rate,
+        min_obstacle_height,
+        max_obstacle_height, obstacle_max_range, obstacle_min_range, raytrace_max_range,
+        raytrace_min_range, *tf_,
+        global_frame_,
+        sensor_frame, tf2::durationFromSec(transform_tolerance)));
+
+    tmp_buffer->setConstraint(enable_constraints, constraint_x,tmp_buffer->parsePolygonStringToVector(constraint_polygon_string));
+
+    observation_buffers_.push_back(tmp_buffer);
 
     // check if we'll add this buffer to our marking observation buffers
     if (marking) {

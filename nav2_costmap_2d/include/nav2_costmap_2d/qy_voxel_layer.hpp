@@ -35,8 +35,8 @@
  * Author: Eitan Marder-Eppstein
  *         David V. Lu!!
  *********************************************************************/
-#ifndef NAV2_COSTMAP_2D__VOXEL_LAYER_HPP_
-#define NAV2_COSTMAP_2D__VOXEL_LAYER_HPP_
+#ifndef NAV2_COSTMAP_2D__QY_VOXEL_LAYER_HPP_
+#define NAV2_COSTMAP_2D__QY_VOXEL_LAYER_HPP_
 
 #include <vector>
 #include "message_filters/subscriber.h"
@@ -147,6 +147,7 @@ protected:
   nav2_voxel_grid::VoxelGrid voxel_grid_;
   double z_resolution_, origin_z_;
   int unknown_threshold_, mark_threshold_, size_z_;
+  double min_mark_height_;
   rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>::SharedPtr
     clearing_endpoints_pub_;
 
@@ -157,16 +158,24 @@ protected:
     double wx, double wy, double wz, double & mx, double & my,
     double & mz)
   {
-    if (wx < origin_x_ || wy < origin_y_ || wz < origin_z_) {
+    // if (wx < origin_x_|| wy < origin_y_ || wz < origin_z_) {
+    //   RCLCPP_WARN(logger_,"drop point (%.3lf,%.3lf,%.3lf) below (%.3lf,%.3lf,%.3lf)",wx,wy,wz,origin_x_,origin_y_,origin_z_);
+    //   return false;
+    // }
+    if (wx < origin_x_-0.001 || wy < origin_y_-0.001 || wz < origin_z_-0.001) {
+      RCLCPP_WARN(logger_,"drop point (%.3lf,%.3lf,%.3lf) below (%.3lf,%.3lf,%.3lf)",wx,wy,wz,origin_x_,origin_y_,origin_z_);
       return false;
     }
+    if(wx < origin_x_) wx = origin_x_;
+    if(wy < origin_y_) wy = origin_y_;
+    if(wz < origin_z_) wz = origin_z_;
     mx = ((wx - origin_x_) / resolution_);
     my = ((wy - origin_y_) / resolution_);
     mz = ((wz - origin_z_) / z_resolution_);
     if (mx < size_x_ && my < size_y_ && mz < size_z_) {
       return true;
     }
-
+    RCLCPP_WARN(logger_,"drop point (%.3lf,%.3lf,%.3lf) over (%.3lf,%.3lf,%.3lf)",wx,wy,wz,size_x_*resolution_+origin_x_,size_y_*resolution_+origin_y_,size_z_*z_resolution_+origin_z_);
     return false;
   }
 
@@ -231,6 +240,7 @@ protected:
 
   // Dynamic parameters handler
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
+  
 };
 
 }  // namespace nav2_costmap_2d

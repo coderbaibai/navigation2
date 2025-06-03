@@ -115,6 +115,21 @@ void ObservationBuffer::bufferCloud(const sensor_msgs::msg::PointCloud2 & cloud)
     // transform the point cloud
     tf2_buffer_.transform(cloud, global_frame_cloud, global_frame_, tf_tolerance_);
     global_frame_cloud.header.stamp = cloud.header.stamp;
+    
+    // transform the polygon
+    constraint_polygon_.header.frame_id = cloud.header.frame_id;
+    constraint_polygon_.header.stamp = cloud.header.stamp;
+
+    if(enable_constraints_){
+      observation_list_.front().enable_constraints = true;
+      observation_list_.front().transform_stamped_ = tf2_buffer_.lookupTransform(
+        constraint_polygon_.header.frame_id,     // 目标坐标系
+          global_frame_,     // 源坐标系
+          tf2::TimePointZero, // 查找最新可用变换
+          tf_tolerance_ // 设置超时时间
+      );
+    }
+    observation_list_.front().constraint_polygon_ = constraint_polygon_;
 
     // now we need to remove observations from the cloud that are below
     // or above our height thresholds
@@ -233,4 +248,86 @@ void ObservationBuffer::resetLastUpdated()
 {
   last_updated_ = clock_->now();
 }
+void 
+ObservationBuffer::setConstraint(bool enable_constraints,double constraint_x,std::vector<std::vector<double>>&& constraint_polygon)
+{
+  enable_constraints_ = enable_constraints;
+  if(!enable_constraints_) return;
+
+  constraint_polygon_.header.frame_id = sensor_frame_;
+  constraint_polygon_.header.stamp = clock_->now();
+  for(auto & point : constraint_polygon) {
+    geometry_msgs::msg::Point32 pt;
+    pt.x = constraint_x;
+    pt.y = point[0];
+    pt.z = point[1];
+    constraint_polygon_.polygon.points.push_back(pt);
+  }
+}
+std::vector<std::vector<double>> 
+ObservationBuffer::parsePolygonStringToVector(const std::string& input) {
+  std::vector<std::vector<double>> result;
+  std::istringstream iss(input);
+  char ch;
+
+  // 检查起始字符是否为 '['
+  if (!(iss >> ch) || ch != '[') {
+      RCLCPP_ERROR(
+        logger_,
+        "parsePolygonStringToVector should start with '['");
+        return std::vector<std::vector<double>>{};
+  }
+
+  while (iss >> ch && ch != ']') {
+      if (ch==',') continue;
+      else if (ch != '[') {
+        RCLCPP_ERROR(
+          logger_,
+          "parsePolygonStringToVector item should start with '[' with no blank space,get %c",ch);
+        return std::vector<std::vector<double>>{};
+      }
+
+      std::vector<double> innerVec;
+      double value;
+      char commaOrEnd;
+
+      while (true) {
+          if (!(iss >> value)) {
+            RCLCPP_ERROR(
+              logger_,
+              "Invalid format: expected number");
+            return std::vector<std::vector<double>>{};
+          }
+          innerVec.push_back(value);
+
+          if(innerVec.size() > 2) {
+            RCLCPP_ERROR(
+              logger_,
+              "Invalid format: each inner vector should have exactly two elements");
+            return std::vector<std::vector<double>>{};
+          }
+
+          if (!(iss >> commaOrEnd)) {
+            RCLCPP_ERROR(
+              logger_,
+              "Invalid format: unexpected end of input");
+            return std::vector<std::vector<double>>{};
+          }
+
+          if (commaOrEnd == ']') {
+              break;
+          } else if (commaOrEnd != ',') {
+            RCLCPP_ERROR(
+              logger_,
+              "Invalid format: expected ',' or ']'");
+            return std::vector<std::vector<double>>{};
+          }
+      }
+      
+      result.push_back(innerVec);
+  }
+  return result;
+}
+
 }  // namespace nav2_costmap_2d
+

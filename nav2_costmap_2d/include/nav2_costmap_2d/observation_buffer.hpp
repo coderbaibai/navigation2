@@ -48,6 +48,7 @@
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "nav2_costmap_2d/observation.hpp"
 #include "nav2_util/lifecycle_node.hpp"
+#include "geometry_msgs/msg/polygon_stamped.hpp"
 
 
 namespace nav2_costmap_2d
@@ -132,6 +133,9 @@ public:
    */
   void resetLastUpdated();
 
+  void setConstraint(bool enable_constraints,double constraint_x,std::vector<std::vector<double>>&& constraint_polygon);
+  std::vector<std::vector<double>> parsePolygonStringToVector(const std::string& input);
+
 private:
   /**
    * @brief  Removes any stale observations from the buffer list
@@ -152,6 +156,8 @@ private:
   std::recursive_mutex lock_;  ///< @brief A lock for accessing data in callbacks safely
   double obstacle_max_range_, obstacle_min_range_, raytrace_max_range_, raytrace_min_range_;
   tf2::Duration tf_tolerance_;
+  bool enable_constraints_;
+  geometry_msgs::msg::PolygonStamped constraint_polygon_;
 };
 }  // namespace nav2_costmap_2d
 #endif  // NAV2_COSTMAP_2D__OBSERVATION_BUFFER_HPP_

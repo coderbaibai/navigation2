@@ -201,13 +201,6 @@ void ObstacleLayer::onInitialize()
     node->get_parameter(name_ + "." + source + "." + "constraint_x", constraint_x);
     node->get_parameter(name_ + "." + source + "." + "constraint_polygon", constraint_polygon_string);
 
-    RCLCPP_ERROR(logger_,std::string(name_ + "." + source + "." + "enable_constraints").c_str());
-    RCLCPP_ERROR(logger_,"%d",enable_constraints);
-    RCLCPP_ERROR(logger_,std::string(name_ + "." + source + "." + "constraint_x").c_str());
-    RCLCPP_ERROR(logger_,"%lf",constraint_x);
-    RCLCPP_ERROR(logger_,std::string(name_ + "." + source + "." + "constraint_polygon").c_str());
-    RCLCPP_ERROR(logger_,constraint_polygon_string.c_str());
-
     RCLCPP_DEBUG(
       logger_,
       "Creating an observation buffer for source %s, topic %s, frame %s",

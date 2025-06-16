@@ -40,6 +40,7 @@ DockingServer::DockingServer(const rclcpp::NodeOptions & options)
   declare_parameter("fixed_frame", "odom");
   declare_parameter("dock_backwards", false);
   declare_parameter("dock_prestaging_tolerance", 0.5);
+  declare_parameter("navigator_bt_xml", std::string(""));
 }
 
 nav2_util::CallbackReturn
